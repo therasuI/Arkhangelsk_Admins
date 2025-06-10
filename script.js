@@ -18,7 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 access: 'leader', 
                 avatar: DEFAULT_AVATAR, 
                 vk: '' 
-            }],
+            },
+        { 
+                id: 2, 
+                nickname: 'second-admin@example.com', // <-- ЗАМЕНИТЕ НА ВТОРУЮ ПОЧТУ
+                position: 'Руководство Сервера', 
+                access: 'leader', 
+                avatar: DEFAULT_AVATAR, 
+                vk: '' 
+            }
+        ],
             broadcastMessages: [{ text: "Панель успешно инициализирована. Добро пожаловать!", date: new Date().toLocaleString() }],
             normReports: {}
         };
