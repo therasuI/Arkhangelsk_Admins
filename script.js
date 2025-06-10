@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const DB_KEY = 'blackRussiaAdminDB_v7';
+    const DB_KEY = 'blackRussiaAdminDB_v8';
     const THEME_KEY = 'blackRussiaTheme';
     const SESSION_KEY = 'blackRussiaSession';
     const DEFAULT_AVATAR = 'https://placehold.co/100x100/2a2c2e/e5e5e5?text=BR';
@@ -8,33 +8,36 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadData() {
         const data = localStorage.getItem(DB_KEY);
         if (data) {
-            return JSON.parse(data);
-        }
-        return {
-            administrators: [{ 
-                id: 1, 
-                nickname: 'uktamovrasuljon58@gmail.com', 
-                position: 'Руководство Сервера', 
-                access: 'leader', 
-                avatar: DEFAULT_AVATAR, 
-                vk: '' 
-            },
-        { 
-                id: 2, 
-                nickname: 'samuiliotka@gmail.com', 
-                position: 'Руководство Сервера', 
-                access: 'leader', 
-                avatar: DEFAULT_AVATAR, 
-                vk: '' 
+            try {
+                return JSON.parse(data);
+            } catch (e) {
+                console.error("Ошибка парсинга данных из localStorage", e);
+                return createInitialData();
             }
-        ],
+        }
+        return createInitialData();
+    }
+    
+    function createInitialData() {
+        return {
+            administrators: [
+                { id: 1, nickname: 'uktamovrasuljon58@gmail.com', position: 'Руководство Сервера', access: 'leader', avatar: DEFAULT_AVATAR, vk: '' },
+                { id: 2, nickname: 'samuiliotka@gmail.com', position: 'Руководство Сервера', access: 'leader', avatar: DEFAULT_AVATAR, vk: '' }
+            ],
             broadcastMessages: [{ text: "Панель успешно инициализирована. Добро пожаловать!", date: new Date().toLocaleString() }],
             normReports: {}
         };
     }
+
     function saveData() {
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        try {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        } catch (e) {
+            console.error("Не удалось сохранить данные в localStorage", e);
+            showNotification("Произошла ошибка при сохранении данных", "error");
+        }
     }
+    
     let db = loadData();
 
     const POSITIONS = ['Младший Модератор', 'Модератор', 'Старший Модератор', 'Следящий за организацией', 'Администратор / Старший администратор', 'Главный следящий / Зам. главного следящего'];
@@ -52,33 +55,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function showView(viewId) {
         views.forEach(view => {
             view.classList.remove('active');
-            if(view.id === 'leader-reports-view') {
+            if (view.id === 'leader-reports-view') {
                 view.classList.remove('mobile-chat-mode');
             }
         });
-        document.getElementById(viewId).classList.add('active');
+        const activeView = document.getElementById(viewId);
+        if (activeView) {
+            activeView.classList.add('active');
+        }
     }
 
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
+        if (!container) return;
         const notification = document.createElement('div');
         notification.classList.add('notification', type);
-
-        const iconMap = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
+        const iconMap = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle' };
         const iconClass = iconMap[type] || 'fa-info-circle';
-
         notification.innerHTML = `<i class="fas ${iconClass}"></i><p>${message}</p>`;
         container.appendChild(notification);
-
         setTimeout(() => {
             notification.classList.add('fade-out');
-            notification.addEventListener('animationend', () => {
-                notification.remove();
-            });
+            notification.addEventListener('animationend', () => notification.remove());
         }, 4000);
     }
 
@@ -101,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'revoked': showNotification('Ваш доступ отозван.', 'error'); logout(); break;
         }
     }
+
     function logout() {
         sessionStorage.removeItem(SESSION_KEY);
         document.getElementById('login-nickname').value = '';
@@ -134,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         db.administrators.push(newAdmin);
         saveData();
         handleLogin(newAdmin);
+        showNotification("Заявка успешно подана!", "success");
     });
 
     function renderAdminDashboard(admin) {
@@ -154,9 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-avatar-upload').addEventListener('change', function() {
         if (this.files && this.files[0]) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('profile-avatar-preview').src = e.target.result;
-            }
+            reader.onload = (e) => { document.getElementById('profile-avatar-preview').src = e.target.result; }
             reader.readAsDataURL(this.files[0]);
         }
     });
@@ -179,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function renderAdminListForManagement() {
         const listDiv = document.getElementById('admin-list-management');
+        if(!listDiv) return;
         const otherAdmins = db.administrators.filter(a => a.access !== 'leader');
         listDiv.innerHTML = otherAdmins.length === 0
             ? '<p>Новых заявок или действующих администраторов нет.</p>'
@@ -218,11 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderLeaderReportsView() {
+        if(!leaderReportsView) return;
         chatContainer.classList.remove('mobile-chat-active');
         leaderReportsView.classList.remove('mobile-chat-mode');
         const chatList = document.getElementById('report-chat-list');
         const approvedAdmins = db.administrators.filter(admin => admin.access === 'approved');
-        
         chatList.innerHTML = approvedAdmins.length > 0
             ? approvedAdmins.map(admin => `<div class="chat-list-item" data-id="${admin.id}"><img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар"><div><strong>${admin.nickname}</strong><br><small>${admin.position}</small></div></div>`).join('')
             : '<p style="padding: 15px;">Нет действующих администраторов.</p>';
@@ -231,12 +230,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderChatForAdmin(adminId) {
         const chatWindow = document.getElementById('report-chat-window');
+        if(!chatWindow) return;
         const reports = db.normReports[adminId] || [];
         const admin = db.administrators.find(a => a.id == adminId);
         if (!admin) { chatWindow.innerHTML = ''; return; }
-        
         chatWindow.innerHTML = `<div class="chat-header"><h3>Отчеты от: <strong>${admin.nickname}</strong></h3>${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Перейти в ВК</a>` : ''}</div>`;
-            
         if (reports.length === 0) {
             chatWindow.innerHTML += '<p>Этот администратор еще не отправлял отчеты.</p>';
         } else {
@@ -262,9 +260,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminId = parseInt(button.dataset.id, 10);
         const admin = db.administrators.find(a => a.id === adminId);
         if (!admin) return;
-        if (button.classList.contains('btn-approve')) admin.access = 'approved';
-        if (button.classList.contains('btn-reject')) db.administrators = db.administrators.filter(a => a.id !== adminId);
-        if (button.classList.contains('btn-revoke')) admin.access = 'revoked';
+        if (button.classList.contains('btn-approve')) {
+            admin.access = 'approved';
+            showNotification(`Доступ для ${admin.nickname} одобрен.`, "success");
+        }
+        if (button.classList.contains('btn-reject')) {
+            db.administrators = db.administrators.filter(a => a.id !== adminId);
+            showNotification(`Заявка от ${admin.nickname} отклонена.`, "info");
+        }
+        if (button.classList.contains('btn-revoke')) {
+            admin.access = 'revoked';
+            showNotification(`Доступ для ${admin.nickname} отозван.`, "error");
+        }
         saveData();
         renderAdminListForManagement();
     });
@@ -276,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveData();
             document.getElementById('broadcast-message').value = '';
             renderBroadcastHistory();
+            showNotification("Объявление отправлено всем администраторам.", "success");
         }
     });
 
@@ -327,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBroadcastForAdmin() {
         const panel = document.getElementById('admin-broadcast-panel');
+        if(!panel) return;
         panel.innerHTML = (!db.broadcastMessages || db.broadcastMessages.length === 0)
             ? '<p>Объявлений пока нет.</p>'
             : db.broadcastMessages.slice(0, 3).map(msg => `<div class="report-message"><div class="meta">${msg.date}</div><p>${msg.text}</p></div>`).join('');
@@ -334,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBroadcastHistory() {
         const historyDiv = document.getElementById('broadcast-history');
+        if(!historyDiv) return;
         historyDiv.innerHTML = '<h3><i class="fas fa-history"></i> История сообщений:</h3>';
         if (!db.broadcastMessages || db.broadcastMessages.length === 0) {
             historyDiv.innerHTML += '<p>Сообщений пока нет.</p>';
@@ -341,4 +351,44 @@ document.addEventListener('DOMContentLoaded', () => {
             historyDiv.innerHTML += db.broadcastMessages.slice(0, 5).map(msg => `<p><strong>${msg.date}:</strong> ${msg.text}</p>`).join('');
         }
     }
+
+    function refreshCurrentView() {
+        const loggedInAdminId = parseInt(sessionStorage.getItem(SESSION_KEY));
+        if (!loggedInAdminId) return;
+
+        const admin = db.administrators.find(a => a.id === loggedInAdminId);
+        if (!admin) return;
+
+        const activeView = document.querySelector('.view.active');
+        if (!activeView) return;
+
+        switch (activeView.id) {
+            case 'leader-dashboard':
+                renderAdminListForManagement();
+                renderBroadcastHistory();
+                break;
+            case 'admin-dashboard':
+                renderBroadcastForAdmin();
+                break;
+            case 'leader-reports-view':
+                const selectedAdmin = activeView.querySelector('.chat-list-item.active');
+                renderLeaderReportsView();
+                if(selectedAdmin) {
+                    const reselected = activeView.querySelector(`.chat-list-item[data-id="${selectedAdmin.dataset.id}"]`);
+                    if(reselected) {
+                        reselected.classList.add('active');
+                        renderChatForAdmin(reselected.dataset.id);
+                    }
+                }
+                break;
+        }
+    }
+
+    window.addEventListener('storage', (event) => {
+        if (event.key === DB_KEY) {
+            db = loadData();
+            showNotification("Данные были обновлены в другой вкладке.", "info");
+            refreshCurrentView();
+        }
+    });
 });
