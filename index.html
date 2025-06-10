@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель Администрации Black Russia</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+</head>
+<body>
+    <div id="notification-container"></div>
+
+    <div class="background-blobs">
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
+    </div>
+
+    <div id="theme-switcher">
+        <i class="fas fa-sun"></i>
+        <i class="fas fa-moon"></i>
+    </div>
+
+    <div class="container">
+
+        <div id="welcome-screen" class="view">
+            <img src="https://i.postimg.cc/Tw4YhsFV/IMG-7651.png" alt="Black Russia Logo" class="logo">
+            <h1>Панель Администрации</h1>
+            <p>Централизованное управление и мониторинг</p>
+            <button id="enter-button" class="btn-primary">Войти в Панель</button>
+        </div>
+
+        <div id="login-screen" class="view">
+            <h1>Вход или Регистрация</h1>
+            <p>Введите ваш игровой никнейм для доступа к панели.</p>
+            <input type="text" id="login-nickname" placeholder="Ваш никнейм">
+            <button id="login-submit-button" class="btn-primary">Продолжить</button>
+            <button class="back-button btn-secondary" data-target="welcome-screen">Назад</button>
+        </div>
+
+        <div id="register-screen" class="view">
+            <h1>Подача заявки</h1>
+            <p>Укажите вашу текущую должность для отправки заявки на рассмотрение.</p>
+            <input type="text" id="register-nickname" placeholder="Игровой никнейм" disabled>
+            <select id="register-position"></select>
+            <button id="register-submit-button" class="btn-primary">Подать заявку</button>
+            <button class="back-button btn-secondary" data-target="login-screen">Назад</button>
+        </div>
+
+        <div id="pending-screen" class="view">
+            <i class="fas fa-hourglass-half status-icon"></i>
+            <h1>Заявка на рассмотрении</h1>
+            <p>Руководство Сервера рассмотрит вашу заявку в ближайшее время. Ожидайте.</p>
+            <button class="logout-button btn-secondary">Выйти</button>
+        </div>
+        
+        <div id="admin-dashboard" class="view">
+            <header>
+                <h1 id="admin-greeting"></h1>
+                <button class="logout-button btn-secondary">Выйти</button>
+            </header>
+            <div class="dashboard-content">
+                <div class="panel profile-panel">
+                    <h2><i class="fas fa-user-circle"></i> Мой профиль</h2>
+                    <div class="profile-main">
+                        <div class="profile-avatar-wrapper">
+                            <img id="profile-avatar-preview" src="https://placehold.co/100x100?text=AV" alt="Аватар">
+                            <label for="profile-avatar-upload" class="avatar-upload-label"><i class="fas fa-camera"></i></label>
+                            <input type="file" id="profile-avatar-upload" accept="image/*" class="hidden">
+                        </div>
+                        <div class="profile-info">
+                            <p><strong>Никнейм:</strong> <span id="profile-nickname"></span></p>
+                            <p><strong>Должность:</strong> <span id="profile-position"></span></p>
+                        </div>
+                    </div>
+                    <div class="profile-edit">
+                        <label for="profile-vk-input">Ссылка на ВК:</label>
+                        <input type="text" id="profile-vk-input" placeholder="https://vk.com/your_id">
+                        <button id="save-profile-button" class="btn-primary small"><i class="fas fa-save"></i> Сохранить профиль</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2><i class="fas fa-tasks"></i> Моя норма</h2>
+                    <p id="admin-norm"></p>
+                    <button id="submit-norm-button" class="btn-primary"><i class="fas fa-paper-plane"></i> Отправить отчет по норме</button>
+                </div>
+                <div class="panel large-panel">
+                    <h2><i class="fas fa-bullhorn"></i> Объявления от Руководства</h2>
+                    <div id="admin-broadcast-panel"></div>
+                </div>
+                <div class="panel large-panel">
+                    <h2><i class="fas fa-arrow-up"></i> Система повышения</h2>
+                    <div id="promotion-system"></div>
+                </div>
+            </div>
+        </div>
+       
+        <div id="leader-dashboard" class="view">
+             <header>
+                <h1><i class="fas fa-shield-alt"></i> Панель Руководства</h1>
+                <button class="logout-button btn-secondary">Выйти</button>
+            </header>
+            <div class="dashboard-content">
+                <div class="panel large-panel">
+                    <h2><i class="fas fa-users-cog"></i> Управление доступом</h2>
+                    <p>Принятие, отклонение и отзыв доступа администраторов.</p>
+                    <div id="admin-list-management"></div>
+                </div>
+                <div class="panel">
+                    <h2><i class="fas fa-comments"></i> Просмотр отчетов</h2>
+                    <p>Проверка отчетов по норме от каждого администратора.</p>
+                    <button id="view-reports-button" class="btn-primary"><i class="fas fa-envelope-open-text"></i> Открыть отчеты</button>
+                </div>
+                <div class="panel large-panel">
+                    <h2><i class="fas fa-bullhorn"></i> Рассылка сообщений</h2>
+                    <textarea id="broadcast-message" placeholder="Сообщение для всех администраторов..."></textarea>
+                    <button id="send-broadcast-button" class="btn-primary">Отправить</button>
+                    <div id="broadcast-history"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="leader-reports-view" class="view">
+            <header>
+                <button class="back-to-list-btn btn-secondary"><i class="fas fa-arrow-left"></i> К списку</button>
+                <h1><i class="fas fa-comments"></i> Отчеты по норме</h1>
+                <button class="back-button btn-secondary" data-target="leader-dashboard">Назад к панели</button>
+            </header>
+            <div class="chat-container">
+                <div id="report-chat-list" class="chat-list-panel">
+                </div>
+                <div id="report-chat-window" class="chat-window-panel">
+                    <div class="placeholder">
+                        <i class="fas fa-inbox"></i>
+                        <p>Выберите администратора из списка слева, чтобы просмотреть его отчеты.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="report-submission-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal">×</span>
+            <h2>Отправка отчета по норме</h2>
+            <p>Прикрепите скриншот и добавьте комментарий.</p>
+            <div class="form-group">
+                <label for="report-image-upload">Скриншот выполнения нормы:</label>
+                <input type="file" id="report-image-upload" accept="image/*">
+                <img id="report-image-preview" src="#" alt="Превью скриншота" class="hidden"/>
+            </div>
+            <div class="form-group">
+                <label for="report-text">Комментарий:</label>
+                <textarea id="report-text" placeholder="Например: норма за 15.10.2023 выполнена."></textarea>
+            </div>
+            <button id="send-report-button" class="btn-primary">Отправить отчет</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
