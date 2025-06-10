@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
         { 
                 id: 2, 
-                nickname: 'second-admin@example.com', // <-- ЗАМЕНИТЕ НА ВТОРУЮ ПОЧТУ
+                nickname: 'samuiliotka@gmail.com', 
                 position: 'Руководство Сервера', 
                 access: 'leader', 
                 avatar: DEFAULT_AVATAR, 
