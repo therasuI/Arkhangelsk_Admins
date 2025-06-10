@@ -1,60 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const firebaseConfig = {
-      apiKey: "ВАШ_КЛЮЧ_API",
-      authDomain: "ВАШ_ПРОЕКТ.firebaseapp.com",
-      databaseURL: "https://ВАШ_ПРОЕКТ.firebaseio.com",
-      projectId: "ВАШ_ПРОЕКТ_ID",
-      storageBucket: "ВАШ_ПРОЕКТ.appspot.com",
-      messagingSenderId: "ВАШ_ID_ОТПРАВИТЕЛЯ",
-      appId: "ВАШ_APP_ID"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
+    const DB_KEY = 'blackRussiaAdminDB_v6';
     const THEME_KEY = 'blackRussiaTheme';
     const SESSION_KEY = 'blackRussiaSession';
     const DEFAULT_AVATAR = 'https://placehold.co/100x100/2a2c2e/e5e5e5?text=BR';
-    let db = {};
 
-    function loadDataFromServer(callback) {
-        database.ref('/').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                db = data;
-            } else {
-                const initialData = createInitialData();
-                database.ref('/').set(initialData);
-                db = initialData;
-            }
-            if (callback) {
-                callback();
-                callback = null; 
-            }
-            refreshCurrentView();
-        });
-    }
-
-    function saveData() {
-        database.ref('/').set(db).catch(error => {
-            console.error("Ошибка сохранения данных в Firebase: ", error);
-            showNotification("Ошибка сети, не удалось сохранить данные.", "error");
-        });
-    }
-    
-    function createInitialData() {
+    function loadData() {
+        const data = localStorage.getItem(DB_KEY);
+        if (data) {
+            return JSON.parse(data);
+        }
         return {
-            administrators: {
-                '1': { id: 1, nickname: 'uktamovrasuljon58@gmail.com', position: 'Руководство Сервера', access: 'leader', avatar: DEFAULT_AVATAR, vk: '' },
-                '2': { id: 2, nickname: 'samuiliotka@gmail.com', position: 'Руководство Сервера', access: 'leader', avatar: DEFAULT_AVATAR, vk: '' }
-            },
-            broadcastMessages: {
-                'initial': { text: "Панель успешно инициализирована. Добро пожаловать!", date: new Date().toLocaleString() }
-            },
+            administrators: [{ 
+                id: 1, 
+                nickname: 'uktamovrasuljon58@gmail.com', 
+                position: 'Руководство Сервера', 
+                access: 'leader', 
+                avatar: DEFAULT_AVATAR, 
+                vk: '' 
+            }],
+            broadcastMessages: [{ text: "Панель успешно инициализирована. Добро пожаловать!", date: new Date().toLocaleString() }],
             normReports: {}
         };
     }
+    function saveData() {
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+    }
+    let db = loadData();
 
     const POSITIONS = ['Младший Модератор', 'Модератор', 'Старший Модератор', 'Следящий за организацией', 'Администратор / Старший администратор', 'Главный следящий / Зам. главного следящего'];
     const NORMS = {
@@ -65,35 +37,23 @@ document.addEventListener('DOMContentLoaded', () => {
         'Администратор / Старший администратор': '120 минут в игре, 80 репортов, 30 реагирований, 1 МП.',
         'Главный следящий / Зам. главного следящего': '120 минут в игре, 60 репортов, 30 реагирований.',
     };
-    const PROMOTION_SYSTEM = `<ul><li><strong>С Младшего Модератора на Модератора:</strong> минимум 60 баллов. <span>(Срок: 14 дней)</span></li><li><strong>С Модератора на Старшего Модератора:</strong> минимум 100 баллов. <span>(Срок: 21 день)</span></li><li><strong>Со Старшего Модератора на Администратора:</strong> минимум 120 баллов и должность Следящего. <span>(Срок: 28 дней)</span></li><li><strong>С Администратора на Старшего Администратора:</strong> минимум 150 баллов, актив, доверие и стаж от 35 дней.</li></ul>`;
+    const PROMOTION_SYSTEM = `
+        <ul>
+            <li><strong>С Младшего Модератора на Модератора:</strong> минимум 60 баллов. <span>(Срок: 14 дней)</span></li>
+            <li><strong>С Модератора на Старшего Модератора:</strong> минимум 100 баллов. <span>(Срок: 21 день)</span></li>
+            <li><strong>Со Старшего Модератора на Администратора:</strong> минимум 120 баллов и должность Следящего. <span>(Срок: 28 дней)</span></li>
+            <li><strong>С Администратора на Старшего Администратора:</strong> минимум 150 баллов, актив, доверие и стаж от 35 дней.</li>
+        </ul>`;
 
     const views = document.querySelectorAll('.view');
     function showView(viewId) {
         views.forEach(view => {
             view.classList.remove('active');
-            if (view.id === 'leader-reports-view') {
+            if(view.id === 'leader-reports-view') {
                 view.classList.remove('mobile-chat-mode');
             }
         });
-        const activeView = document.getElementById(viewId);
-        if (activeView) {
-            activeView.classList.add('active');
-        }
-    }
-
-    function showNotification(message, type = 'info') {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
-        const notification = document.createElement('div');
-        notification.classList.add('notification', type);
-        const iconMap = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-        const iconClass = iconMap[type] || 'fa-info-circle';
-        notification.innerHTML = `<i class="fas ${iconClass}"></i><p>${message}</p>`;
-        container.appendChild(notification);
-        setTimeout(() => {
-            notification.classList.add('fade-out');
-            notification.addEventListener('animationend', () => notification.remove());
-        }, 4000);
+        document.getElementById(viewId).classList.add('active');
     }
 
     const themeSwitcher = document.getElementById('theme-switcher');
@@ -105,10 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(THEME_KEY, newTheme);
         applyTheme(newTheme);
     });
-    
-    function getAdminsArray() {
-        return db.administrators ? Object.values(db.administrators) : [];
-    }
 
     function handleLogin(admin) {
         sessionStorage.setItem(SESSION_KEY, admin.id);
@@ -116,10 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'approved': renderAdminDashboard(admin); showView('admin-dashboard'); break;
             case 'pending': showView('pending-screen'); break;
             case 'leader': renderLeaderDashboard(); showView('leader-dashboard'); break;
-            case 'revoked': showNotification('Ваш доступ отозван.', 'error'); logout(); break;
+            case 'revoked': alert('Ваш доступ отозван.'); logout(); break;
         }
     }
-
     function logout() {
         sessionStorage.removeItem(SESSION_KEY);
         document.getElementById('login-nickname').value = '';
@@ -132,11 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('login-submit-button').addEventListener('click', () => {
         const nickname = document.getElementById('login-nickname').value.trim();
-        if (!nickname) { 
-            showNotification('Пожалуйста, введите никнейм.', 'error');
-            return; 
-        }
-        const admin = getAdminsArray().find(a => a.nickname.toLowerCase() === nickname.toLowerCase());
+        if (!nickname) { alert('Пожалуйста, введите никнейм.'); return; }
+        const admin = db.administrators.find(a => a.nickname.toLowerCase() === nickname.toLowerCase());
         if (!admin) {
             document.getElementById('register-nickname').value = nickname;
             populatePositions();
@@ -149,18 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('register-submit-button').addEventListener('click', () => {
         const nickname = document.getElementById('register-nickname').value;
         const position = document.getElementById('register-position').value;
-        const newAdminId = Date.now();
-        const newAdmin = { id: newAdminId, nickname, position, access: 'pending', avatar: DEFAULT_AVATAR, vk: '' };
-        
-        if (!db.administrators) db.administrators = {};
-        db.administrators[newAdminId] = newAdmin;
+        const newAdmin = { id: Date.now(), nickname, position, access: 'pending', avatar: DEFAULT_AVATAR, vk: '' };
+        db.administrators.push(newAdmin);
         saveData();
         handleLogin(newAdmin);
-        showNotification("Заявка успешно подана!", "success");
     });
 
     function renderAdminDashboard(admin) {
-        if(!admin) return;
         document.getElementById('admin-greeting').textContent = `Добро пожаловать, ${admin.nickname}!`;
         renderAdminProfilePanel(admin); 
         document.getElementById('admin-norm').textContent = NORMS[admin.position] || 'Норма не найдена.';
@@ -178,18 +125,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-avatar-upload').addEventListener('change', function() {
         if (this.files && this.files[0]) {
             const reader = new FileReader();
-            reader.onload = (e) => { document.getElementById('profile-avatar-preview').src = e.target.result; }
+            reader.onload = (e) => {
+                document.getElementById('profile-avatar-preview').src = e.target.result;
+            }
             reader.readAsDataURL(this.files[0]);
         }
     });
 
     document.getElementById('save-profile-button').addEventListener('click', () => {
-        const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
-        if (db.administrators && db.administrators[loggedInAdminId]) {
-            db.administrators[loggedInAdminId].vk = document.getElementById('profile-vk-input').value.trim();
-            db.administrators[loggedInAdminId].avatar = document.getElementById('profile-avatar-preview').src;
+        const loggedInAdminId = parseInt(sessionStorage.getItem(SESSION_KEY));
+        const admin = db.administrators.find(a => a.id === loggedInAdminId);
+        if (admin) {
+            admin.vk = document.getElementById('profile-vk-input').value.trim();
+            admin.avatar = document.getElementById('profile-avatar-preview').src;
             saveData();
-            showNotification('Профиль успешно сохранен!', 'success');
+            alert('Профиль успешно сохранен!');
         }
     });
 
@@ -200,15 +150,26 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function renderAdminListForManagement() {
         const listDiv = document.getElementById('admin-list-management');
-        if(!listDiv) return;
-        const otherAdmins = getAdminsArray().filter(a => a.access !== 'leader');
+        const otherAdmins = db.administrators.filter(a => a.access !== 'leader');
         listDiv.innerHTML = otherAdmins.length === 0
             ? '<p>Новых заявок или действующих администраторов нет.</p>'
             : otherAdmins.map(admin => {
                 let actionsHtml = '';
                 if (admin.access === 'pending') actionsHtml = `<button class="btn-approve small" data-id="${admin.id}">Принять</button> <button class="btn-reject small" data-id="${admin.id}">Отклонить</button>`;
                 else if (admin.access === 'approved') actionsHtml = `<button class="btn-revoke small" data-id="${admin.id}">Отозвать доступ</button>`;
-                return `<div class="admin-item" data-status="${admin.access}"><div class="admin-item-info"><img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар"><div class="details"><strong>${admin.nickname}</strong><small>${admin.position}</small>${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Профиль ВК</a>` : ''}</div><span data-status="${admin.access}">${admin.access}</span></div><div class="admin-item-actions">${actionsHtml}</div></div>`;
+                return `
+                    <div class="admin-item" data-status="${admin.access}">
+                        <div class="admin-item-info">
+                            <img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар">
+                            <div class="details">
+                                <strong>${admin.nickname}</strong>
+                                <small>${admin.position}</small>
+                                ${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Профиль ВК</a>` : ''}
+                            </div>
+                            <span data-status="${admin.access}">${admin.access}</span>
+                        </div>
+                        <div class="admin-item-actions">${actionsHtml}</div>
+                    </div>`;
             }).join('');
     }
 
@@ -240,41 +201,55 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderLeaderReportsView() {
-        if(!leaderReportsView) return;
         chatContainer.classList.remove('mobile-chat-active');
         leaderReportsView.classList.remove('mobile-chat-mode');
         const chatList = document.getElementById('report-chat-list');
-        const approvedAdmins = getAdminsArray().filter(admin => admin.access === 'approved');
+        const approvedAdmins = db.administrators.filter(admin => admin.access === 'approved');
+        
         chatList.innerHTML = approvedAdmins.length > 0
-            ? approvedAdmins.map(admin => `<div class="chat-list-item" data-id="${admin.id}"><img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар"><div><strong>${admin.nickname}</strong><br><small>${admin.position}</small></div></div>`).join('')
+            ? approvedAdmins.map(admin => `
+                <div class="chat-list-item" data-id="${admin.id}">
+                    <img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар">
+                    <div>
+                        <strong>${admin.nickname}</strong><br><small>${admin.position}</small>
+                    </div>
+                </div>`).join('')
             : '<p style="padding: 15px;">Нет действующих администраторов.</p>';
         document.getElementById('report-chat-window').innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i><p>Выберите администратора из списка.</p></div>`;
     }
 
     function renderChatForAdmin(adminId) {
         const chatWindow = document.getElementById('report-chat-window');
-        if(!chatWindow) return;
-        const reports = (db.normReports && db.normReports[adminId]) ? Object.values(db.normReports[adminId]) : [];
-        const admin = (db.administrators && db.administrators[adminId]) ? db.administrators[adminId] : null;
+        const reports = db.normReports[adminId] || [];
+        const admin = db.administrators.find(a => a.id == adminId);
         if (!admin) { chatWindow.innerHTML = ''; return; }
-        chatWindow.innerHTML = `<div class="chat-header"><h3>Отчеты от: <strong>${admin.nickname}</strong></h3>${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Перейти в ВК</a>` : ''}</div>`;
+        
+        chatWindow.innerHTML = `
+            <div class="chat-header">
+                <h3>Отчеты от: <strong>${admin.nickname}</strong></h3>
+                ${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Перейти в ВК</a>` : ''}
+            </div>`;
+            
         if (reports.length === 0) {
             chatWindow.innerHTML += '<p>Этот администратор еще не отправлял отчеты.</p>';
         } else {
-            chatWindow.innerHTML += [...reports].sort((a,b) => b.reportId - a.reportId).map(report => `<div class="report-message"><div class="meta">Отправлено: ${report.date}</div><p>${report.text}</p><img src="${report.imageUrl}" alt="Скриншот отчета"></div>`).join('');
+            chatWindow.innerHTML += [...reports].reverse().map(report => `
+                <div class="report-message">
+                    <div class="meta">Отправлено: ${report.date}</div>
+                    <p>${report.text}</p>
+                    <img src="${report.imageUrl}" alt="Скриншот отчета">
+                </div>`).join('');
         }
     }
     
     function initialize() {
         applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-        loadDataFromServer(() => {
-            const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
-            if (loggedInAdminId && db.administrators && db.administrators[loggedInAdminId]) {
-                handleLogin(db.administrators[loggedInAdminId]);
-            } else {
-                showView('welcome-screen');
-            }
-        });
+        const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
+        if (loggedInAdminId) {
+            const admin = db.administrators.find(a => a.id === parseInt(loggedInAdminId));
+            if (admin) { handleLogin(admin); return; }
+        }
+        showView('welcome-screen');
     }
 
     initialize();
@@ -282,34 +257,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('admin-list-management').addEventListener('click', (e) => {
         const button = e.target.closest('button');
         if (!button) return;
-        const adminId = button.dataset.id;
-        if (!db.administrators || !db.administrators[adminId]) return;
-
-        const adminNickname = db.administrators[adminId].nickname;
-        if (button.classList.contains('btn-approve')) {
-            db.administrators[adminId].access = 'approved';
-            showNotification(`Доступ для ${adminNickname} одобрен.`, "success");
-        }
-        if (button.classList.contains('btn-reject')) {
-            delete db.administrators[adminId];
-            showNotification(`Заявка от ${adminNickname} отклонена.`, "info");
-        }
-        if (button.classList.contains('btn-revoke')) {
-            db.administrators[adminId].access = 'revoked';
-            showNotification(`Доступ для ${adminNickname} отозван.`, "error");
-        }
+        const adminId = parseInt(button.dataset.id, 10);
+        const admin = db.administrators.find(a => a.id === adminId);
+        if (!admin) return;
+        if (button.classList.contains('btn-approve')) admin.access = 'approved';
+        if (button.classList.contains('btn-reject')) db.administrators = db.administrators.filter(a => a.id !== adminId);
+        if (button.classList.contains('btn-revoke')) admin.access = 'revoked';
         saveData();
+        renderAdminListForManagement();
     });
 
     document.getElementById('send-broadcast-button').addEventListener('click', () => {
         const message = document.getElementById('broadcast-message').value.trim();
         if (message) {
-            const messageId = Date.now();
-            if(!db.broadcastMessages) db.broadcastMessages = {};
-            db.broadcastMessages[messageId] = { text: message, date: new Date().toLocaleString() };
+            db.broadcastMessages.unshift({ text: message, date: new Date().toLocaleString() });
             saveData();
             document.getElementById('broadcast-message').value = '';
-            showNotification("Объявление отправлено всем администраторам.", "success");
+            renderBroadcastHistory();
         }
     });
 
@@ -336,18 +300,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const imageUrl = imagePreview.src;
         const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
         if (!loggedInAdminId || !imageUrl.startsWith('data:image') || !text) {
-            showNotification('Прикрепите скриншот и заполните комментарий.', 'error');
+            alert('Пожалуйста, прикрепите скриншот и заполните комментарий.');
             return;
         }
-        const reportId = Date.now();
-        const newReport = { reportId, date: new Date().toLocaleString(), text, imageUrl };
-        
-        if (!db.normReports) db.normReports = {};
-        if (!db.normReports[loggedInAdminId]) db.normReports[loggedInAdminId] = {};
-        db.normReports[loggedInAdminId][reportId] = newReport;
-        
+        const newReport = { reportId: Date.now(), date: new Date().toLocaleString(), text, imageUrl };
+        if (!db.normReports[loggedInAdminId]) db.normReports[loggedInAdminId] = [];
+        db.normReports[loggedInAdminId].push(newReport);
         saveData();
-        showNotification('Отчет успешно отправлен!', 'success');
+        alert('Отчет успешно отправлен!');
         modal.style.display = 'none';
         resetReportForm();
     });
@@ -365,62 +325,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBroadcastForAdmin() {
         const panel = document.getElementById('admin-broadcast-panel');
-        if(!panel) return;
-        const messages = db.broadcastMessages ? Object.values(db.broadcastMessages) : [];
-        panel.innerHTML = messages.length <= 1
+        panel.innerHTML = (!db.broadcastMessages || db.broadcastMessages.length === 0)
             ? '<p>Объявлений пока нет.</p>'
-            : messages.filter(m => m.text !== "Панель успешно инициализирована. Добро пожаловать!").sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 3).map(msg => `<div class="report-message"><div class="meta">${msg.date}</div><p>${msg.text}</p></div>`).join('');
+            : db.broadcastMessages.slice(0, 3).map(msg => `
+                <div class="report-message">
+                    <div class="meta">${msg.date}</div>
+                    <p>${msg.text}</p>
+                </div>`).join('');
     }
 
     function renderBroadcastHistory() {
         const historyDiv = document.getElementById('broadcast-history');
-        if(!historyDiv) return;
         historyDiv.innerHTML = '<h3><i class="fas fa-history"></i> История сообщений:</h3>';
-        const messages = db.broadcastMessages ? Object.values(db.broadcastMessages) : [];
-        if (messages.length <= 1) {
+        if (!db.broadcastMessages || db.broadcastMessages.length === 0) {
             historyDiv.innerHTML += '<p>Сообщений пока нет.</p>';
         } else {
-            historyDiv.innerHTML += messages.filter(m => m.text !== "Панель успешно инициализирована. Добро пожаловать!").sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(msg => `<p><strong>${msg.date}:</strong> ${msg.text}</p>`).join('');
-        }
-    }
-
-    function refreshCurrentView() {
-        const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
-        if (!loggedInAdminId) {
-            if (!document.getElementById('welcome-screen').classList.contains('active') && !document.getElementById('login-screen').classList.contains('active')) {
-                showView('welcome-screen');
-            }
-            return;
-        };
-
-        const admin = (db.administrators && db.administrators[loggedInAdminId]) ? db.administrators[loggedInAdminId] : null;
-        if (!admin) {
-            logout();
-            return;
-        }
-
-        const activeView = document.querySelector('.view.active');
-        if (!activeView) return;
-
-        switch (activeView.id) {
-            case 'leader-dashboard':
-                renderLeaderDashboard();
-                break;
-            case 'admin-dashboard':
-                renderAdminDashboard(admin);
-                break;
-            case 'leader-reports-view':
-                const selectedAdmin = activeView.querySelector('.chat-list-item.active');
-                const selectedAdminId = selectedAdmin ? selectedAdmin.dataset.id : null;
-                renderLeaderReportsView();
-                if(selectedAdminId) {
-                    const reselected = activeView.querySelector(`.chat-list-item[data-id="${selectedAdminId}"]`);
-                    if(reselected) {
-                        reselected.classList.add('active');
-                        renderChatForAdmin(selectedAdminId);
-                    }
-                }
-                break;
+            historyDiv.innerHTML += db.broadcastMessages.slice(0, 5).map(msg => `<p><strong>${msg.date}:</strong> ${msg.text}</p>`).join('');
         }
     }
 });
