@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const DB_KEY = 'blackRussiaAdminDB_v6';
+    const DB_KEY = 'blackRussiaAdminDB_v9';
     const THEME_KEY = 'blackRussiaTheme';
     const SESSION_KEY = 'blackRussiaSession';
+    const SNOW_KEY = 'blackRussiaSnow';
     const DEFAULT_AVATAR = 'https://placehold.co/100x100/2a2c2e/e5e5e5?text=BR';
 
     function loadData() {
@@ -49,11 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function showView(viewId) {
         views.forEach(view => {
             view.classList.remove('active');
-            if(view.id === 'leader-reports-view') {
+            if (view.id === 'leader-reports-view') {
                 view.classList.remove('mobile-chat-mode');
+                document.querySelector('.chat-container')?.classList.remove('mobile-chat-active');
             }
         });
-        document.getElementById(viewId).classList.add('active');
+        const activeView = document.getElementById(viewId);
+        if (activeView) {
+            activeView.classList.add('active');
+        } else {
+            console.error(`View with id "${viewId}" not found.`);
+        }
     }
 
     const themeSwitcher = document.getElementById('theme-switcher');
@@ -65,6 +72,55 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(THEME_KEY, newTheme);
         applyTheme(newTheme);
     });
+
+    let snowInterval = null;
+    const snowContainer = document.getElementById('snow-container');
+    const snowToggle = document.getElementById('snow-toggle');
+
+    function createSnowflake() {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snowflake');
+        const size = Math.random() * 4 + 2 + 'px';
+        const duration = Math.random() * 5 + 7 + 's';
+        const drift = (Math.random() - 0.5) * 150 + 'px';
+        snowflake.style.width = size;
+        snowflake.style.height = size;
+        snowflake.style.left = Math.random() * window.innerWidth + 'px';
+        snowflake.style.opacity = Math.random() * 0.7 + 0.3;
+        snowflake.style.animationDuration = duration;
+        snowflake.style.setProperty('--drift', drift);
+        snowContainer.appendChild(snowflake);
+        setTimeout(() => snowflake.remove(), parseFloat(duration) * 1000);
+    }
+
+    function toggleSnow(forceState) {
+        const isSnowing = typeof forceState === 'boolean' ? forceState : !snowToggle.classList.contains('active');
+        if (isSnowing) {
+            if (!snowInterval) snowInterval = setInterval(createSnowflake, 150);
+            snowToggle.classList.add('active');
+            localStorage.setItem(SNOW_KEY, 'on');
+        } else {
+            clearInterval(snowInterval);
+            snowInterval = null;
+            snowContainer.innerHTML = '';
+            snowToggle.classList.remove('active');
+            localStorage.setItem(SNOW_KEY, 'off');
+        }
+    }
+    snowToggle.addEventListener('click', () => toggleSnow());
+
+    const spotlight = document.getElementById('spotlight');
+    document.body.addEventListener('mousemove', (e) => {
+        spotlight.style.setProperty('--x', e.clientX + 'px');
+        spotlight.style.setProperty('--y', e.clientY + 'px');
+    });
+
+    function applyStaggeredAnimation(containerSelector) {
+        const items = document.querySelectorAll(`${containerSelector} .admin-item`);
+        items.forEach((item, index) => {
+            item.style.animationDelay = `${index * 0.07}s`;
+        });
+    }
 
     function handleLogin(admin) {
         sessionStorage.setItem(SESSION_KEY, admin.id);
@@ -125,9 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-avatar-upload').addEventListener('change', function() {
         if (this.files && this.files[0]) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('profile-avatar-preview').src = e.target.result;
-            }
+            reader.onload = (e) => document.getElementById('profile-avatar-preview').src = e.target.result;
             reader.readAsDataURL(this.files[0]);
         }
     });
@@ -144,34 +198,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderLeaderDashboard() {
-        renderAdminListForManagement();
+        renderLeaderManagementPanels();
         renderBroadcastHistory();
     }
     
-    function renderAdminListForManagement() {
-        const listDiv = document.getElementById('admin-list-management');
-        const otherAdmins = db.administrators.filter(a => a.access !== 'leader');
-        listDiv.innerHTML = otherAdmins.length === 0
-            ? '<p>Новых заявок или действующих администраторов нет.</p>'
-            : otherAdmins.map(admin => {
-                let actionsHtml = '';
-                if (admin.access === 'pending') actionsHtml = `<button class="btn-approve small" data-id="${admin.id}">Принять</button> <button class="btn-reject small" data-id="${admin.id}">Отклонить</button>`;
-                else if (admin.access === 'approved') actionsHtml = `<button class="btn-revoke small" data-id="${admin.id}">Отозвать доступ</button>`;
-                return `
-                    <div class="admin-item" data-status="${admin.access}">
-                        <div class="admin-item-info">
-                            <img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар">
-                            <div class="details">
-                                <strong>${admin.nickname}</strong>
-                                <small>${admin.position}</small>
-                                ${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Профиль ВК</a>` : ''}
-                            </div>
-                            <span data-status="${admin.access}">${admin.access}</span>
-                        </div>
-                        <div class="admin-item-actions">${actionsHtml}</div>
-                    </div>`;
-            }).join('');
+    function renderLeaderManagementPanels() {
+        const pendingListDiv = document.getElementById('pending-applications-list');
+        const activeListDiv = document.getElementById('active-admins-list');
+
+        const pendingAdmins = db.administrators.filter(a => a.access === 'pending');
+        const approvedAdmins = db.administrators.filter(a => a.access === 'approved');
+
+        pendingListDiv.innerHTML = pendingAdmins.length === 0 ? '<p>Новых заявок нет.</p>' : pendingAdmins.map(admin => `
+            <div class="admin-item" data-status="pending">
+                <div class="admin-item-info">
+                    <img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар">
+                    <div class="details">
+                        <strong>${admin.nickname}</strong>
+                        <small>${admin.position}</small>
+                    </div>
+                </div>
+                <div class="admin-item-actions">
+                    <button class="btn-approve small" data-id="${admin.id}"><i class="fas fa-check"></i> Принять</button>
+                    <button class="btn-reject small" data-id="${admin.id}"><i class="fas fa-times"></i> Отклонить</button>
+                </div>
+            </div>`).join('');
+        
+        activeListDiv.innerHTML = approvedAdmins.length === 0 ? '<p>Нет действующих администраторов.</p>' : approvedAdmins.map(admin => `
+            <div class="admin-item" data-status="approved">
+                <div class="admin-item-info">
+                    <img src="${admin.avatar || DEFAULT_AVATAR}" alt="Аватар">
+                    <div class="details">
+                        <strong>${admin.nickname}</strong>
+                        <small>${admin.position}</small>
+                        ${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Профиль ВК</a>` : ''}
+                    </div>
+                </div>
+                <div class="admin-item-actions">
+                    <button class="btn-revoke small" data-id="${admin.id}"><i class="fas fa-user-slash"></i> Отозвать доступ</button>
+                </div>
+            </div>`).join('');
+
+        applyStaggeredAnimation('#pending-applications-list');
+        applyStaggeredAnimation('#active-admins-list');
     }
+
+    document.querySelector('.leader-management').addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        const adminId = parseInt(button.dataset.id, 10);
+        const admin = db.administrators.find(a => a.id === adminId);
+        if (!admin) return;
+
+        if (button.classList.contains('btn-approve')) admin.access = 'approved';
+        if (button.classList.contains('btn-revoke')) admin.access = 'revoked';
+        if (button.classList.contains('btn-reject')) db.administrators = db.administrators.filter(a => a.id !== adminId);
+        
+        saveData();
+        renderLeaderManagementPanels();
+    });
 
     const chatContainer = document.querySelector('.chat-container');
     const leaderReportsView = document.getElementById('leader-reports-view');
@@ -198,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     backToListBtn.addEventListener('click', () => {
         leaderReportsView.classList.remove('mobile-chat-mode');
         chatContainer.classList.remove('mobile-chat-active');
+        document.querySelectorAll('.chat-list-item').forEach(item => item.classList.remove('active'));
     });
 
     function renderLeaderReportsView() {
@@ -205,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
         leaderReportsView.classList.remove('mobile-chat-mode');
         const chatList = document.getElementById('report-chat-list');
         const approvedAdmins = db.administrators.filter(admin => admin.access === 'approved');
-        
         chatList.innerHTML = approvedAdmins.length > 0
             ? approvedAdmins.map(admin => `
                 <div class="chat-list-item" data-id="${admin.id}">
@@ -225,11 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!admin) { chatWindow.innerHTML = ''; return; }
         
         chatWindow.innerHTML = `
-            <div class="chat-header">
-                <h3>Отчеты от: <strong>${admin.nickname}</strong></h3>
-                ${admin.vk ? `<a href="${admin.vk}" target="_blank" rel="noopener noreferrer">Перейти в ВК</a>` : ''}
-            </div>`;
-            
+            <div class="chat-header"><h3>Отчеты от: <strong>${admin.nickname}</strong></h3></div>`;
         if (reports.length === 0) {
             chatWindow.innerHTML += '<p>Этот администратор еще не отправлял отчеты.</p>';
         } else {
@@ -237,13 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="report-message">
                     <div class="meta">Отправлено: ${report.date}</div>
                     <p>${report.text}</p>
-                    <img src="${report.imageUrl}" alt="Скриншот отчета">
+                    ${report.imageUrl ? `<img src="${report.imageUrl}" alt="Скриншот отчета">` : ''}
                 </div>`).join('');
         }
     }
     
     function initialize() {
         applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+        if (localStorage.getItem(SNOW_KEY) === 'on') toggleSnow(true);
         const loggedInAdminId = sessionStorage.getItem(SESSION_KEY);
         if (loggedInAdminId) {
             const admin = db.administrators.find(a => a.id === parseInt(loggedInAdminId));
@@ -252,21 +334,29 @@ document.addEventListener('DOMContentLoaded', () => {
         showView('welcome-screen');
     }
 
-    initialize();
-
-    document.getElementById('admin-list-management').addEventListener('click', (e) => {
-        const button = e.target.closest('button');
-        if (!button) return;
-        const adminId = parseInt(button.dataset.id, 10);
-        const admin = db.administrators.find(a => a.id === adminId);
-        if (!admin) return;
-        if (button.classList.contains('btn-approve')) admin.access = 'approved';
-        if (button.classList.contains('btn-reject')) db.administrators = db.administrators.filter(a => a.id !== adminId);
-        if (button.classList.contains('btn-revoke')) admin.access = 'revoked';
+    document.getElementById('add-leader-button').addEventListener('click', () => {
+        const emailInput = document.getElementById('add-leader-email');
+        const statusP = document.getElementById('add-leader-status');
+        const newLeaderEmail = emailInput.value.trim();
+        if (!newLeaderEmail) {
+            statusP.textContent = 'Пожалуйста, введите почту.';
+            statusP.style.color = 'var(--warning-color)';
+            return;
+        }
+        if (db.administrators.find(a => a.nickname.toLowerCase() === newLeaderEmail.toLowerCase())) {
+            statusP.textContent = 'Пользователь с такой почтой уже существует!';
+            statusP.style.color = 'var(--danger-color)';
+            return;
+        }
+        const newLeader = { id: Date.now(), nickname: newLeaderEmail, position: 'Руководство Сервера', access: 'leader', avatar: DEFAULT_AVATAR, vk: '' };
+        db.administrators.push(newLeader);
         saveData();
-        renderAdminListForManagement();
+        statusP.textContent = `Руководитель ${newLeaderEmail} успешно добавлен!`;
+        statusP.style.color = 'var(--success-color)';
+        emailInput.value = '';
+        setTimeout(() => { statusP.textContent = ''; }, 5000);
     });
-
+    
     document.getElementById('send-broadcast-button').addEventListener('click', () => {
         const message = document.getElementById('broadcast-message').value.trim();
         if (message) {
@@ -280,10 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('report-submission-modal');
     const imagePreview = document.getElementById('report-image-preview');
     const imageUpload = document.getElementById('report-image-upload');
-
     document.getElementById('submit-norm-button').addEventListener('click', () => modal.style.display = 'block');
     document.querySelector('.close-modal').addEventListener('click', () => { modal.style.display = 'none'; resetReportForm(); });
-    
     imageUpload.addEventListener('change', function() {
         if (this.files && this.files[0]) {
             const reader = new FileReader();
@@ -294,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(this.files[0]);
         }
     });
-
     document.getElementById('send-report-button').addEventListener('click', () => {
         const text = document.getElementById('report-text').value.trim();
         const imageUrl = imagePreview.src;
@@ -343,4 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
             historyDiv.innerHTML += db.broadcastMessages.slice(0, 5).map(msg => `<p><strong>${msg.date}:</strong> ${msg.text}</p>`).join('');
         }
     }
+    
+    initialize();
 });
